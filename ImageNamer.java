@@ -32,6 +32,7 @@ public class ImageNamer extends JFrame {
     private static String ENTER = "Enter";
     private static String BARCODE = "Barcode";
     private static String CHOOSER = "Chooser";
+    private static String FILENAME = "Filename";
     static JButton enterButton;
     static JButton enterButton2;
     static JButton enterButton3;
@@ -120,9 +121,8 @@ public class ImageNamer extends JFrame {
         input2 = new JTextField(6);      
         input3 = new JTextField(20);
         input4 = new JTextField(20);
-        input4.addActionListener(new MyTextActionListener());
-        input4.getDocument().addDocumentListener(new MyDocumentListener());
-        input4.getDocument().putProperty("name", "Text Field");
+       // input4.addActionListener(new MyTextActionListener());
+        
         enterButton = new JButton("Enter");
         enterButton.setActionCommand(ENTER);
         enterButton.addActionListener(buttonListener);
@@ -137,7 +137,13 @@ public class ImageNamer extends JFrame {
         fileChooserButton.addActionListener(buttonListener);
         input1.setActionCommand(ENTER);
         input1.addActionListener(buttonListener);
+        input4.addActionListener(buttonListener);
+        input4.setActionCommand(FILENAME);
        
+        //add listener to determine length of text in barcode input
+        input4.getDocument().addDocumentListener(new MyDocumentListener());
+        input4.getDocument().putProperty("name", "Text Field");
+        
         inputpanel.add(fileChooserButton);
         inputpanel.add(pathLabel);
         inputpanel2.add(label2);
@@ -150,37 +156,12 @@ public class ImageNamer extends JFrame {
         inputpanel4.add(input4);
         savePanel.add(saveLabel);
         
-        input4.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-              System.out.println("Text=" + input4.getText());
-              String newName = input4.getText();
-              active = false;
-				try {
-					String filename = newPath.toString();
-					String[] parts = filename.split("\\.");
-					String ext = parts[parts.length -1];
-					Files.move(fullPath, fullPath.resolveSibling(newName + "." + ext ));
-					receivedString = "waiting";
-					receivedLabel.setText(receivedString); 
-					input4.setText(""); 
-					active = true;
-					Thread t = new Thread(new MessageLoop());
-					t.start();
-				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-            }
-          });
 
         
     	
         final JPanel appGUI = new JPanel();
         appGUI.setLayout(appGridLayout);
-        JPanel controls = new JPanel();
-        controls.setLayout(new GridLayout(2,3));
-        
-        //Set up components preferred size
+
         JButton b = new JButton("Just fake button");
         Dimension buttonSize = b.getPreferredSize();
         appGUI.setPreferredSize(new Dimension((int)(buttonSize.getWidth() * 5.5),
@@ -196,11 +177,9 @@ public class ImageNamer extends JFrame {
 
         
         pane.add(appGUI, BorderLayout.NORTH);
-        pane.add(new JSeparator(), BorderLayout.CENTER);
-        pane.add(controls, BorderLayout.SOUTH);
+
     }
     public static void startLoop(){
-    	//Thread t = new Thread(new MessageLoop());
     	Thread t = new Thread(new MessageLoop());
 		t.start();
     }
@@ -213,8 +192,7 @@ public class ImageNamer extends JFrame {
 
         	System.out.println(cmd);
         	if (CHOOSER.equals(cmd))
-            {      
-        		
+            {         		
         		JFileChooser fileChooser = new JFileChooser();
         		fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
         		fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -227,8 +205,7 @@ public class ImageNamer extends JFrame {
         		    pathLabel.setText("Image Folder = " + pathString);
         		    folder = Paths.get(pathString);
                 	startLoop();
-        		}
-        		
+        		}       		
             }
             if (ENTER.equals(cmd))
             {              
@@ -262,17 +239,30 @@ public class ImageNamer extends JFrame {
                 	lengthLabel.setText(lengthString);
                 }
             }
-            
-            
+            if (FILENAME.equals(cmd) ){
+            	System.out.println("clorked it!");
+            	String newName = input4.getText();
+                active = false;
+  				try {
+  					String filename = newPath.toString();
+  					String[] parts = filename.split("\\.");
+  					String ext = parts[parts.length -1];
+  					Files.move(fullPath, fullPath.resolveSibling(newName + "." + ext ));
+  					receivedString = "waiting";
+  					receivedLabel.setText(receivedString); 
+  					input4.setText(""); 
+  					active = true;
+  					Thread t = new Thread(new MessageLoop());
+  					t.start();
+  				} catch (IOException e1) {
+  					e1.printStackTrace();
+  				}
+            }        
         }		
     }
     
     
-    /**
-     * Create the GUI and show it.  For thread safety,
-     * this method is invoked from the
-     * event dispatch thread.
-     */
+
     private static void createAndShowGUI() {
         //Create and set up the window.
         ImageNamer frame = new ImageNamer("Image Namer");
@@ -284,143 +274,53 @@ public class ImageNamer extends JFrame {
         frame.setVisible(true);
     }
     
-    public static void watchDirectoryPath(Path path) {
-		// Sanity check - Check if path is a folder
-		try {
-			Boolean isFolder = (Boolean) Files.getAttribute(path,
-					"basic:isDirectory", NOFOLLOW_LINKS);
-			if (!isFolder) {
-				throw new IllegalArgumentException("Path: " + path + " is not a folder");
-			}
-		} catch (IOException ioe) {
-			// Folder does not exists
-			ioe.printStackTrace();
-		}
-		
-		System.out.println("Watching path: " + path);
-		
-		// We obtain the file system of the Path
-		FileSystem fs = path.getFileSystem ();
-		
-		// We create the new WatchService using the new try() block
-		try(WatchService service = fs.newWatchService()) {
-			
-			// We register the path to the service
-			// We watch for creation events
-			path.register(service, ENTRY_CREATE);
-			
-			// Start the infinite polling loop
-			WatchKey key = null;
-			int count = 0;
-			
-			while(true) {
-				key = service.take();
-				System.out.println(count);
-				count++;
-				// Dequeueing events
-				Kind<?> kind = null;
-				for(WatchEvent<?> watchEvent : key.pollEvents()) {
-					// Get the type of the event
-					kind = watchEvent.kind();
-					if (OVERFLOW == kind) {
-						continue; //loop
-					} else if (ENTRY_CREATE == kind) {
-						// A new Path was created 
-						Path newPath = ((WatchEvent<Path>) watchEvent).context();
-						// Output
-						System.out.println("New path created: " + newPath);
-					}
-				}
-				
-				if(!key.reset()) {
-					break; //loop
-				}
-			}
-			
-		} catch(IOException ioe) {
-			ioe.printStackTrace();
-		} catch(InterruptedException ie) {
-			ie.printStackTrace();
-		}
-		
-	}
+    
     class MyDocumentListener implements DocumentListener {
         final String newline = "\n";
 
         public void insertUpdate(DocumentEvent e) {
-            updateLog(e, "inserted into");
+            //updateLog(e, "inserted into");
+        	Document doc = (Document)e.getDocument();
+            int changeLength = doc.getLength();
+            
+            
+        	if( lengthInt != 0){
+        		System.out.println("changelength: " + changeLength);
+        		if(lengthInt <= changeLength){
+        			 String newName = input4.getText();
+                     active = false;
+       				try {
+       					String filename = newPath.toString();
+       					String[] parts = filename.split("\\.");
+       					String ext = parts[parts.length -1];
+       					Files.move(fullPath, fullPath.resolveSibling(newName + "." + ext ));
+       					receivedString = "waiting";
+       					receivedLabel.setText(receivedString);            					
+       					active = true;
+       					Thread t = new Thread(new MessageLoop());
+       					t.start();
+       				} catch (IOException e1) {
+       					e1.printStackTrace();
+       				}
+        		}
+        	}
         }
         public void removeUpdate(DocumentEvent e) {
-            updateLog(e, "removed from");
+           // updateLog(e, "removed from");
         }
         public void changedUpdate(DocumentEvent e) {
             //Plain text components don't fire these events.
         }
 
-        public void updateLog(DocumentEvent e, String action) {
-            Document doc = (Document)e.getDocument();
-            int changeLength = doc.getLength();
-            
-            //if(lengthInt != null && !lengthInt.isEmpty()){
-            	if( lengthInt != 0){
-            		System.out.println("changelength: " + changeLength);
-            		//int barLength = Integer.parseInt(lengthString);
-            		if(lengthInt <= changeLength){
-            			System.out.println("rename that fucker");
-            			 String newName = input4.getText();
-                         active = false;
-           				try {
-           					String filename = newPath.toString();
-           					System.out.println("filename:" + filename );
-           					String[] parts = filename.split("\\.");
-           					String ext = parts[parts.length -1];
-           					Files.move(fullPath, fullPath.resolveSibling(newName + "." + ext ));
-           					receivedString = "waiting";
-           					receivedLabel.setText(receivedString);            					
-           					active = true;
-           					Thread t = new Thread(new MessageLoop());
-           					t.start();
-           				} catch (IOException e1) {
-           					// TODO Auto-generated catch block
-           					e1.printStackTrace();
-           				}
-            		}
-            	}
-            //}
-
-        }
     }
 
-    class MyTextActionListener implements ActionListener {
-        /** Handle the text field Return. */
-        public void actionPerformed(ActionEvent e) {
-           /* int selStart = textArea.getSelectionStart();
-            int selEnd = textArea.getSelectionEnd();
 
-            textArea.replaceRange(textField.getText(),
-                                  selStart, selEnd); */
-           // textField.selectAll();
-        	System.out.println("text action listener ");
-        }
-    }
 
-    /** Handle button click. */
-   /* public void actionPerformed(ActionEvent e) {
-       // displayArea.setText("");
-       // textField.requestFocus();
-    }*/
-    static void threadMessage(String message) {
-        String threadName =
-            Thread.currentThread().getName();
-        System.out.format("%s: %s%n",
-                          threadName,
-                          message);
-    }
     
-    public static Path newName(Path oldFile, String newNameString){
+    /*public static Path newName(Path oldFile, String newNameString){
         // the magic is done by Path.resolve(...)
         return oldFile.getParent().resolve(newNameString);
-    }
+    }*/
     public static  class MessageLoop
     implements Runnable {
 
