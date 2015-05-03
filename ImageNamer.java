@@ -180,7 +180,7 @@ public class ImageNamer extends JFrame {
 
     }
     public static void startLoop(){
-    	Thread t = new Thread(new MessageLoop());
+    	Thread t = new Thread(new FileCheckerLoop());
 		t.start();
     }
     
@@ -252,7 +252,7 @@ public class ImageNamer extends JFrame {
   					receivedLabel.setText(receivedString); 
   					input4.setText(""); 
   					active = true;
-  					Thread t = new Thread(new MessageLoop());
+  					Thread t = new Thread(new FileCheckerLoop());
   					t.start();
   				} catch (IOException e1) {
   					e1.printStackTrace();
@@ -279,7 +279,6 @@ public class ImageNamer extends JFrame {
         final String newline = "\n";
 
         public void insertUpdate(DocumentEvent e) {
-            //updateLog(e, "inserted into");
         	Document doc = (Document)e.getDocument();
             int changeLength = doc.getLength();
             
@@ -297,7 +296,7 @@ public class ImageNamer extends JFrame {
        					receivedString = "waiting";
        					receivedLabel.setText(receivedString);            					
        					active = true;
-       					Thread t = new Thread(new MessageLoop());
+       					Thread t = new Thread(new FileCheckerLoop());
        					t.start();
        				} catch (IOException e1) {
        					e1.printStackTrace();
@@ -306,22 +305,15 @@ public class ImageNamer extends JFrame {
         	}
         }
         public void removeUpdate(DocumentEvent e) {
-           // updateLog(e, "removed from");
+
         }
         public void changedUpdate(DocumentEvent e) {
-            //Plain text components don't fire these events.
+            
         }
 
     }
 
-
-
-    
-    /*public static Path newName(Path oldFile, String newNameString){
-        // the magic is done by Path.resolve(...)
-        return oldFile.getParent().resolve(newNameString);
-    }*/
-    public static  class MessageLoop
+    public static  class FileCheckerLoop
     implements Runnable {
 
     	
@@ -394,7 +386,6 @@ public class ImageNamer extends JFrame {
     public static void main(String[] args) {
         /* Use an appropriate Look and Feel */
         try {
-
             UIManager.setLookAndFeel("javax.swing.plaf.metal.MetalLookAndFeel");
         } catch (UnsupportedLookAndFeelException ex) {
             ex.printStackTrace();
